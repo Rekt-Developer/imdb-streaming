@@ -3,16 +3,14 @@
 
 <head>
     <meta charset="utf-8">
-    <meta http-equiv='cache-control' content='no-cache'>
-    <meta http-equiv='expires' content='0'>
-    <meta http-equiv='pragma' content='no-cache'>
+    <meta http-equiv="cache-control" content="no-cache">
+    <meta http-equiv="expires" content="0">
+    <meta http-equiv="pragma" content="no-cache">
     <title>Stream</title>
-    <meta name="description" content="">
+    <meta name="description" content="Watch movies and TV shows ad-free">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://code.jquery.com/ui/1.13.1/jquery-ui.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 </head>
 
@@ -48,24 +46,19 @@
             </h2>
             <div id="search-accordion" class="accordion-collapse collapse show" aria-expanded="true">
                 <div class="accordion-body">
-                    <div>
-                        <form method="get" onsubmit="event.preventDefault(); 
-                                        search(); return false;">
-                            <label for="q_field">Title:</label>
-                            <input type="text" id="q_field" placeholder="e.g. John Wick" oninput="search();">
-                            <button type="submit" class="btn btn-primary">Search</button>
-                        </form>
-                    </div>
-                    <div id="search-results">
-
-                    </div>
+                    <form method="get" onsubmit="event.preventDefault(); search(); return false;">
+                        <label for="q_field">Title:</label>
+                        <input type="text" id="q_field" placeholder="e.g. John Wick" oninput="search();">
+                        <button type="submit" class="btn btn-primary">Search</button>
+                    </form>
+                    <div id="search-results"></div>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="d-flex justify-content-center p-3" style="width: 100%;">
-        <iframe src="" width="1200px" height="600px" allowfullscreen></iframe>
+        <iframe id="streaming-frame" src="" width="1200px" height="600px" allowfullscreen></iframe>
     </div>
 
     <div class="card container-flex">
@@ -89,242 +82,97 @@
         </table>
     </div>
 
-    <script type="text/javascript">
-
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Function to clear history
         function clear_history() {
             localStorage.clear();
             document.querySelector("#watched tbody").innerHTML = "";
-        };
-
-        function add_result(item) {
-            const results = document.querySelector("#search-results");
-
-            if (results.innerHTML === "No results matching your query!") {
-                results.innerHTML = "";
-            };
-
-            const card = document.createElement("div");
-            card.classList.add("card");
-            card.classList.add("d-flex");
-            card.classList.add("m-3");
-            card.classList.add("p-3");
-            card.style.width = "100%";
-            card.style.cursor = "pointer";
-
-            const card_body = document.createElement("div");
-            card_body.classList.add("card-body");
-
-            const card_image = document.createElement("img");
-            card_image.src = item.i;
-            card_image.height = "150";
-            card_image.width = "150";
-
-            const card_title = document.createElement("h5");
-            card_title.classList.add("card-title");
-            card_title.innerHTML = item.l + ` (${item.y})`;
-
-            const card_type = document.createElement("h6");
-            card_type.classList.add("card-title-secondary");
-            card_type.innerHTML = item.q === "feature" ? "Movie" : item.q;
-
-            const card_text = document.createElement("p");
-            card_text.classList.add("card-text");
-            card_text.innerHTML = item.s;
-
-            const card_id = document.createElement("p");
-            card_id.classList.add("card-link");
-            card_id.innerHTML = `IMDb ID: ${item.id}`;
-
-            card.appendChild(card_image);
-            card_body.appendChild(card_title);
-            card_body.appendChild(card_type);
-            card_body.appendChild(card_text);
-            card_body.appendChild(card_id);
-
-            card.appendChild(card_body);
-
-            card.addEventListener("click", function () {
-                document.querySelector("#id").value = item.id;
-                window.scrollTo(0, 0);
-            });
-
-            results.appendChild(card);
         }
 
+        // Function to search for movies or TV shows
         function search() {
-            let q = document.querySelector("#q_field").value;
-            q = q.replaceAll(" ", "_");
-            //q = encodeURIComponent(q.trim());
+            const query = document.querySelector("#q_field").value.trim().replaceAll(" ", "_");
+            if (!query) return;
 
-            // console.log(q);
-
-            const results_list = document.querySelector("#search-results");
-            // console.log(results_list);
-
-            // 2) Using jQuery (JSON-P)
-            jQuery.ajax({
-                url: `https://sg.media-imdb.com/suggests/f/${q}.json`,
-                dataType: 'jsonp',
+            const resultsContainer = document.querySelector("#search-results");
+            $.ajax({
+                url: `https://sg.media-imdb.com/suggests/${query[0]}/${query}.json`,
+                dataType: "jsonp",
+                jsonpCallback: `imdb$${query}`,
                 cache: true,
-                jsonp: false,
-                jsonpCallback: `imdb$${q}`
-            }).then(function (results) {
-
-                results_list.innerHTML = "No results matching your query!";
-
-                //console.log(results);
-
-                for (let item in results.d) {
-                    item = results.d[item];
-                    // console.log(item.id);
-                    if (item.id.slice(0, 2) === 'tt') {
-                        add_result(item);
-                    }
+            }).then(results => {
+                resultsContainer.innerHTML = "";
+                if (results.d) {
+                    results.d.forEach(item => {
+                        if (item.id.startsWith("tt")) {
+                            resultsContainer.innerHTML += `
+                                <div class="card m-3 p-3" style="cursor:pointer;">
+                                    <img src="${item.i}" alt="${item.l}" class="img-thumbnail" style="width:150px;">
+                                    <h5>${item.l} (${item.y})</h5>
+                                    <p>IMDb ID: ${item.id}</p>
+                                </div>`;
+                        }
+                    });
+                } else {
+                    resultsContainer.innerHTML = "No results found!";
                 }
             });
-
         }
 
+        // Function to get and set iframe content
         function get_iframe() {
-            iframe = document.querySelector('iframe');
+            const id = document.querySelector("#id").value;
+            const season = document.querySelector("#season").value;
+            const episode = document.querySelector("#episode").value;
 
-            id = document.querySelector('#id').value;
-            season = document.querySelector('#season').value;
-            episode = document.querySelector('#episode').value;
+            const iframe = document.querySelector("#streaming-frame");
+            iframe.src = season && episode
+                ? `https://multiembed.mov/?video_id=${id}&s=${season}&e=${episode}`
+                : `https://multiembed.mov/?video_id=${id}`;
 
-            title_tag = document.querySelector('title');
-            var title;
+            // Save to localStorage
+            const history = JSON.parse(localStorage.getItem("watched")) || [];
+            history.push({ id, season, episode });
+            localStorage.setItem("watched", JSON.stringify(history));
+            updateHistory();
+        }
 
-            if (season && episode) {
-                iframe.src = `https://multiembed.mov/?video_id=${id}&s=${season}&e=${episode}`;
-            }
-            else {
-                iframe.src = `https://multiembed.mov/?video_id=${id}`;
-            }
-
-            jQuery.ajax({
-                url: `https://sg.media-imdb.com/suggests/f/${id}.json`,
-                dataType: 'jsonp',
-                cache: true,
-                jsonp: false,
-                jsonpCallback: `imdb$${id}`
-            }).then(function (results) {
-                for (var i = 0; i < results.d.length; i++) {
-                    if (results.d[i].id.slice(0, 2) === 'tt') {
-                        item = results.d[i];
-                        break;
-                    }
+        // Function to dynamically block ads in iframe
+        function blockAds() {
+            const iframe = document.querySelector("#streaming-frame");
+            const observer = new MutationObserver(() => {
+                const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+                if (iframeDocument) {
+                    // Remove common ad elements
+                    const adElements = iframeDocument.querySelectorAll(".ad, .ads, [id*='ad']");
+                    adElements.forEach(ad => ad.remove());
                 }
-
-                title = item.l;
-
-                var watched = localStorage.getItem('watched');
-
-                if (watched === null) {
-                    watched = [];
-                }
-                else {
-                    watched = JSON.parse(watched);
-                }
-
-                current = {
-                    id: id,
-                    title: title,
-                    season: season,
-                    episode: episode
-                };
-
-                watched.push(current);
-
-                localStorage.setItem('watched', JSON.stringify(watched));
-
-                update_watched();
-
-                title_tag.innerHTML = `Streaming  - ${title}`;
-
             });
 
-            history.pushState({}, null, `?id=${id}&s=${season}&e=${episode}`);
-
-            iframe.scrollIntoView();
-
+            observer.observe(iframe, { childList: true, subtree: true });
         }
 
-        function update_watched() {
-            var watched = localStorage.getItem('watched');
-            if (watched === null) {
-                watched = [];
-            }
-            else {
-                watched = JSON.parse(watched);
-            }
+        // Monitor iframe load event to apply ad-blocking
+        document.querySelector("#streaming-frame").addEventListener("load", blockAds);
 
-            console.log(watched);
-
-            var table = document.querySelector('tbody');
-            table.innerHTML = '';
-
-            for (var i = 0; i < watched.length; i++) {
-                var item = watched[watched.length - i - 1];
-
-                // console.log(item);
-
-                var row = document.createElement('tr');
-                row.dataset.item = item;
-
-                // row.role = 'a';
-                row.setAttribute('data-href', `?id=${item.id}&s=${item.season}&e=${item.episode}`);
-
-                row.style.cursor = 'pointer';
-
-                var id = document.createElement('td');
-                id.innerHTML = item.id;
-
-                var title = document.createElement('td');
-                title.innerHTML = item.title;
-
-                var season = document.createElement('td');
-                season.innerHTML = item.season;
-
-                var episode = document.createElement('td');
-                episode.innerHTML = item.episode;
-
-                row.appendChild(id);
-                row.appendChild(title);
-                row.appendChild(season);
-                row.appendChild(episode);
-
-                table.appendChild(row);
-            }
-
-            var rows = document.querySelectorAll('tr');
-
-            rows.forEach(row => {
-                row.addEventListener('click', function () {
-                    window.location.href = row.dataset.href;
-                });
-            });
+        // Update watch history in the table
+        function updateHistory() {
+            const history = JSON.parse(localStorage.getItem("watched")) || [];
+            const tbody = document.querySelector("#watched tbody");
+            tbody.innerHTML = history.map(item => `
+                <tr>
+                    <td>${item.id}</td>
+                    <td>${item.title || "N/A"}</td>
+                    <td>${item.season || "-"}</td>
+                    <td>${item.episode || "-"}</td>
+                </tr>
+            `).join("");
         }
 
-        const urlParams = new URLSearchParams(window.location.search);
-
-        if (urlParams.has('id')) {
-            document.querySelector('#id').value = urlParams.get('id');
-            document.querySelector('#season').value = urlParams.get('s');
-            document.querySelector('#episode').value = urlParams.get('e');
-            get_iframe();
-        }
-
-        update_watched();
-
+        document.addEventListener("DOMContentLoaded", updateHistory);
     </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
-        integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
-        crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"
-        integrity="sha384-fbbOQedDUMZZ5KreZpsbe1LCZPVmfTnH7ois6mU1QK+m14rQ1l2bGBq41eYeM/fS"
-        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>
